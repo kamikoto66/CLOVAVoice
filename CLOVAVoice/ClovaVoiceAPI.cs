@@ -31,34 +31,64 @@ namespace CLOVAVoice
             private int _Volume;
             private int _Speed;
             private int _Pitch;
+            private int _Emotion;
+            private int _Emotion_Strength;
             private string _Format;
             private int _Sampling_Rate;
+            private int _Alpha;
+            private int _End_Pitch;
+
+            private bool _IsEmotion;
 
             public string format { get { return _Format; } }
+            public bool isemotion { get { return _IsEmotion; } set { _IsEmotion = value; } }
 
-            public Params(string speaker, int volume, int speed, int pitch, string format, int sampling_rate)
+            public Params(string speaker, int volume, int speed, int pitch, int emotion, int emotion_strength,
+                string format, int sampling_rate, int alpha, int end_pitch)
             {
                 this._Speaker = speaker;
                 this._Volume = volume;
                 this._Speed = speed;
                 this._Pitch = pitch;
+                this._Emotion = emotion;
+                this._Emotion_Strength = emotion_strength;
                 this._Format = format;
                 this._Sampling_Rate = sampling_rate;
+                this._Alpha = alpha;
+                this._End_Pitch = end_pitch;
             }
 
             public byte[] GetByte(string text)
             {
                 string Params = string.Empty;
 
+                //포멧을 MP3로 설정하였을때
                 if (_Format.Equals("mp3"))
                 {
-                    Params = string.Format("speaker={0}&text={1}&volume={2}&speed={3}&pitch={4}&format={5}",
-                        _Speaker, text, _Volume, _Speed, _Pitch, _Format);
+                    if(_IsEmotion.Equals(true))
+                    {
+                        Params = string.Format("speaker={0}&text={1}&volume={2}&speed={3}&pitch={4}&emotion={5}&emotion-strength={6}&format={7}&alpha={8}&end-pitch={9}",
+                        _Speaker, text, _Volume, _Speed, _Pitch, _Emotion, _Emotion_Strength, _Format, _Alpha, _End_Pitch);
+                    }
+                    else
+                    {
+                        Params = string.Format("speaker={0}&text={1}&volume={2}&speed={3}&pitch={4}&format={5}&alpha={6}&end-pitch={7}",
+                        _Speaker, text, _Volume, _Speed, _Pitch, _Format, _Alpha, _End_Pitch);
+                    }
                 }
+                //아닐때
                 else
                 {
-                    Params = string.Format("speaker={0}&text={1}&volume={2}&speed={3}&pitch={4}&format={5}&sampling-rate={6}",
-                        _Speaker, text, _Volume, _Speed, _Pitch, _Format, _Sampling_Rate);
+                    if (_IsEmotion.Equals(true))
+                    {
+                        Params = string.Format("speaker={0}&text={1}&volume={2}&speed={3}&pitch={4}&emotion={5}&emotion-strength={6}&format={7}&sampling-rate={8}&alpha={9}&end-pitch={10}",
+                        _Speaker, text, _Volume, _Speed, _Pitch, _Emotion, _Emotion_Strength, _Format, _Sampling_Rate, _Alpha, _End_Pitch);
+                    }
+                    else
+                    {
+                        Params = string.Format("speaker={0}&text={1}&volume={2}&speed={3}&pitch={4}&format={5}&sampling-rate={7}&alpha={8}&end-pitch={9}",
+                        _Speaker, text, _Volume, _Speed, _Pitch, _Format, _Sampling_Rate, _Alpha, _End_Pitch);
+                    }
                 }
 
                 byte[] output = Encoding.UTF8.GetBytes(Params);
@@ -82,8 +112,12 @@ namespace CLOVAVoice
             _Params = @params;
             _Folder = folder;
 
-            RegistryKey CLOVAVoiceSimG;
+            Init();
+        }
 
+        private void Init()
+        {
+            RegistryKey CLOVAVoiceSimG;
             CLOVAVoiceSimG = Registry.CurrentUser.CreateSubKey("Software").CreateSubKey("CLOVAVoiceSimG");
 
             App_Key_ID = CLOVAVoiceSimG.GetValue("API_KEY_ID") as string;

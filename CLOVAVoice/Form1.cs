@@ -21,9 +21,18 @@ namespace CLOVAVoice
         private int _Volume = 0;
         private int _Speed = 0;
         private int _Pitch = 0;
+        private int _Emotion = 0;
+        private int _Emotion_strength;
         private string _Format = string.Empty;
         private int _Sampling_Rate= 0;
+        private int _Alpha = 0;
+        private int _End_Pitch = 0;
         private string _FolderName = string.Empty;
+        private bool _Isinitialize = false;
+
+        private string[] _NomalSpeaker = null;
+        private string[] _EmotionSpeaker = { "nara", "varam", "vmikyung", "vdain", "vyuna" };
+        private bool _IsEmotionCheck = false;
 
         public Form1()
         {
@@ -32,8 +41,16 @@ namespace CLOVAVoice
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            string[] format = { "mp3", "wav"};
+            string[] emotion = { "중립", "슬픔", "기쁨", "분노" };
+            string[] emotion_strength = { "약함", "보통", "강함" };
+            string[] format = { "mp3", "wav" };
             string[] sampling = { "8000", "16000", "24000", "48000" };
+
+            string[] english = { "clara", "matt", "danna", "djoey",  };
+
+            string[] japan = { "shinji", "ntomoko", "nnaomi", "dnaomi_joyful", "dnaomi_formal", "driko", "deriko",
+                               "nsayuri", "dhajime", "ddaiki", "dayumu", "dsayuri", "dtomoko", "dnaomi"};
+
             string[] speaker = { "nara", "nara_call", "nminyoung", "nyejin", "mijin", "jinho",
                 "nminsang", "nsinu", "nhajun", "ndain", "njiyun", "nsujin", "njinho", "njihun",
                 "njooahn",  "nseonghoon", "njihwan", "nsiyoon", "ngaram", "ngoeun", "neunyoung",
@@ -46,18 +63,32 @@ namespace CLOVAVoice
                 ,"dsinu-matt" ,"nsabina" ,"nmammon" ,"nmeow" ,"nwoof" ,"nreview" ,"nyounghwa"
                 ,"nmovie" ,"nsangdo" ,"nshasha" ,"nian" ,"ndonghyun" ,"vian","vdonghyun"};
 
+            _NomalSpeaker = new string[speaker.Length + japan.Length + english.Length];
+
+            Array.Copy(speaker, 0, _NomalSpeaker, 0, speaker.Length);
+            Array.Copy(japan, 0, _NomalSpeaker, speaker.Length, japan.Length);
+            Array.Copy(english, 0, _NomalSpeaker, speaker.Length + japan.Length, english.Length);
+
+
+            format_combobox.Items.AddRange(format);      
             sampling_rate_combobox.Items.AddRange(sampling);
-            sampling_rate_combobox.SelectedIndex = 2;
+            emotion_comboBox.Items.AddRange(emotion);
+            emotion_strength_comboBox.Items.AddRange(emotion_strength);
 
-            format_combobox.Items.AddRange(format);
+            speaker_comboBox.Items.AddRange(speaker);
+            speaker_comboBox.Items.AddRange(japan);
+            speaker_comboBox.Items.AddRange(english);
+
             format_combobox.SelectedIndex = 0;
+            sampling_rate_combobox.SelectedIndex = 2;
+            emotion_comboBox.SelectedIndex = 0;
+            emotion_strength_comboBox.SelectedIndex = 0;
+            speaker_comboBox.SelectedIndex = 0;
 
-            speaker_combo.Items.AddRange(speaker);
-            speaker_combo.SelectedIndex = 0;
-
+            textList.Items.Clear();
             convert_button.Enabled = false;
-
-            TextList.Items.Clear();
+            emotion_comboBox.Enabled = false;
+            emotion_strength_comboBox.Enabled = false;
         }
 
         #region MenuItemClick
@@ -71,7 +102,7 @@ namespace CLOVAVoice
         {
             convert_button.Enabled = false;
 
-            TextList.Items.Clear();
+            textList.Items.Clear();
 
             _TextDatas.Clear();
         }
@@ -88,17 +119,27 @@ namespace CLOVAVoice
 
         private void volume_bar_Scroll(object sender, EventArgs e)
         {
-            _Volume = volume_bar.Value;
+            _Volume = volume_trackBar.Value;
         }
 
         private void speed_bar_Scroll(object sender, EventArgs e)
         {
-            _Speed = speed_bar.Value;
+            _Speed = speed_trackBar.Value;
         }
 
         private void pitch_bar_Scroll(object sender, EventArgs e)
         {
-            _Pitch = pitch_bar.Value;
+            _Pitch = pitch_trackBar.Value;
+        }
+
+        private void alpha_trackBar_Scroll(object sender, EventArgs e)
+        {
+            _Alpha = alpha_trackBar.Value;
+        }
+
+        private void end_pitch_trackBar_Scroll(object sender, EventArgs e)
+        {
+            _End_Pitch = end_pitch_trackBar.Value;
         }
 
         #endregion
@@ -111,14 +152,6 @@ namespace CLOVAVoice
 
             if (_Format.Equals("mp3"))
             {
-                if(_Speaker.Equals("mijin"))
-                {
-                    sampling_rate_combobox.SelectedIndex = 1;
-                }
-                else
-                {
-                    sampling_rate_combobox.SelectedIndex = 2;
-                }
                 sampling_rate_combobox.Enabled = false;
             }
             else
@@ -134,19 +167,17 @@ namespace CLOVAVoice
 
         private void speaker_combo_SelectedIndexChanged(object sender, EventArgs e)
         {
-            _Speaker = speaker_combo.SelectedItem as string;
+            _Speaker = speaker_comboBox.SelectedItem as string;
+        }
 
-            if(_Format.Equals("mp3"))
-            {
-                if(_Speaker.Equals("mijin"))
-                {
-                    sampling_rate_combobox.SelectedIndex = 1;
-                }
-                else
-                {
-                    sampling_rate_combobox.SelectedIndex = 2;
-                }
-            }
+        private void emotion_comboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            _Emotion = emotion_comboBox.SelectedIndex;
+        }
+
+        private void emotion_strength_comboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            _Emotion_strength = emotion_strength_comboBox.SelectedIndex;
         }
 
         #endregion
@@ -155,8 +186,9 @@ namespace CLOVAVoice
 
         private void convert_button_Click(object sender, EventArgs e)
         {
-            ClovaVoiceAPI.Params @params = new ClovaVoiceAPI.Params(_Speaker, _Volume, _Speed, _Pitch,
-                _Format, _Sampling_Rate);
+            ClovaVoiceAPI.Params @params = new ClovaVoiceAPI.Params(_Speaker, _Volume, _Speed, _Pitch, _Emotion, _Emotion_strength, _Format, _Sampling_Rate, _Alpha, _End_Pitch);
+
+            @params.isemotion = _IsEmotionCheck;
 
             for (int i = 0; i < _TextDatas.Count; i++)
             {
@@ -182,7 +214,7 @@ namespace CLOVAVoice
             else
                 _TextDatas.Clear();
 
-            TextList.Items.Clear();
+            textList.Items.Clear();
 
             if (!filepath.Equals(string.Empty))
             {
@@ -223,8 +255,33 @@ namespace CLOVAVoice
 
             for (int i = 0; i < _TextDatas.Count; i++)
             {
-                TextList.Items.AddRange(_TextDatas[i].ToArray());
+                textList.Items.AddRange(_TextDatas[i].ToArray());
             }
         }
+
+        #region
+
+        private void Emotion_checkBox_CheckedChanged(object sender, EventArgs e)
+        {
+            _IsEmotionCheck = Emotion_checkBox.Checked;
+
+            if(_IsEmotionCheck.Equals(true))
+            {
+                speaker_comboBox.Items.Clear();
+                speaker_comboBox.Items.AddRange(_EmotionSpeaker);
+            }
+            else
+            {
+                speaker_comboBox.Items.Clear();
+                speaker_comboBox.Items.AddRange(_NomalSpeaker);
+            }
+
+            emotion_comboBox.Enabled = Emotion_checkBox.Checked;
+            emotion_strength_comboBox.Enabled = Emotion_checkBox.Checked;
+
+            speaker_comboBox.SelectedIndex = 0;
+        }
+
+        #endregion
     }
 }
